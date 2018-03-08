@@ -10,6 +10,8 @@ const int SCREEN_HEIGHT = 480;
 SDL_Renderer *ren;
 SDL_Window *win;
 
+int x, y, iW, iH;
+
 // Error log function
 void logSDLError(std::ostream &os, const std::string &msg) {
   os << msg << " error " << SDL_GetError() << std::endl;
@@ -81,6 +83,22 @@ int init() {
   return 0;
 }
 
+void movement() {
+  const Uint8 *keyState = SDL_GetKeyboardState(NULL);
+  if (keyState[SDL_SCANCODE_W]) {
+    y -= 5;
+  }
+  if (keyState[SDL_SCANCODE_S]) {
+    y += 5;
+  }
+  if (keyState[SDL_SCANCODE_D]) {
+    x += 5;
+  }
+  if (keyState[SDL_SCANCODE_A]) {
+    x -= 5;
+  }
+}
+
 // Main function
 int main() {
   if (init() != 0) {
@@ -96,20 +114,31 @@ int main() {
   std::string bgrPath = "res/background.bmp";
   SDL_Texture *bgr = loadTexture(bgrPath, ren);
 
-  renderTexture(bgr, ren, 0, 0);
-  renderTexture(bgr, ren, SCREEN_WIDTH / 2, 0);
-
-  renderTexture(bgr, ren, 0, SCREEN_HEIGHT / 2);
-  renderTexture(bgr, ren, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-
-  int iW, iH;
   SDL_QueryTexture(image, NULL, NULL, &iW, &iH);
-  int x = SCREEN_WIDTH / 2 - iW / 2;
-  int y = SCREEN_HEIGHT / 2 - iH / 2;
-  renderTexture(image, ren, x, y);
+  x = SCREEN_WIDTH / 2 - iW / 2;
+  y = SCREEN_HEIGHT / 2 - iH / 2;
 
-  SDL_RenderPresent(ren);
-  SDL_Delay(2000);
+  SDL_Event e;
+  bool quit = false;
+  while (!quit) {
+    while (SDL_PollEvent(&e)) {
+      if (e.type == SDL_QUIT) {
+        quit = true;
+      }
+    }
+
+    renderTexture(bgr, ren, 0, 0);
+    renderTexture(bgr, ren, SCREEN_WIDTH / 2, 0);
+
+    renderTexture(bgr, ren, 0, SCREEN_HEIGHT / 2);
+    renderTexture(bgr, ren, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+    movement();
+
+    renderTexture(image, ren, x, y);
+    SDL_RenderPresent(ren);
+    SDL_Delay(10);
+  }
 
   // Cleanup
   SDL_DestroyTexture(bgr);
