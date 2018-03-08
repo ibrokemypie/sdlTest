@@ -3,12 +3,17 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
+#include <unistd.h>
+
+#define FPS 60
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
 SDL_Renderer *ren;
 SDL_Window *win;
+bool quit = false;
 
 int x, y, iW, iH;
 
@@ -84,20 +89,33 @@ int init() {
 }
 
 void movement() {
-  const Uint8 *keyState = SDL_GetKeyboardState(NULL);
-  if (keyState[SDL_SCANCODE_W]) {
-    y -= 5;
-  }
-  if (keyState[SDL_SCANCODE_S]) {
-    y += 5;
-  }
-  if (keyState[SDL_SCANCODE_D]) {
-    x += 5;
-  }
-  if (keyState[SDL_SCANCODE_A]) {
-    x -= 5;
+  while (!quit) {
+    const Uint8 *keyState = SDL_GetKeyboardState(NULL);
+    if (keyState[SDL_SCANCODE_W]) {
+      if (y > 0) {
+        y -= 5;
+      }
+    }
+    if (keyState[SDL_SCANCODE_S]) {
+      if (y < SCREEN_HEIGHT - iH) {
+        y += 5;
+      }
+    }
+    if (keyState[SDL_SCANCODE_D]) {
+      if (x < SCREEN_WIDTH - iW) {
+        x += 5;
+      }
+    }
+    if (keyState[SDL_SCANCODE_A]) {
+      if (x > 0) {
+        x -= 5;
+      }
+    }
+    usleep(10000);
   }
 }
+
+void render() {}
 
 // Main function
 int main() {
@@ -118,8 +136,13 @@ int main() {
   x = SCREEN_WIDTH / 2 - iW / 2;
   y = SCREEN_HEIGHT / 2 - iH / 2;
 
+  Uint32 waittime = 1000.0f / FPS;
+  Uint32 framestarttime = 0;
+  Sint32 delaytime;
+
   SDL_Event e;
-  bool quit = false;
+  std::thread move(movement);
+
   while (!quit) {
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_QUIT) {
@@ -133,14 +156,17 @@ int main() {
     renderTexture(bgr, ren, 0, SCREEN_HEIGHT / 2);
     renderTexture(bgr, ren, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 
-    movement();
-
     renderTexture(image, ren, x, y);
     SDL_RenderPresent(ren);
-    SDL_Delay(10);
+
+    delaytime = waittime - (SDL_GetTicks() - framestarttime);
+    if (delaytime > 0)
+      SDL_Delay((Uint32)delaytime);
+    framestarttime = SDL_GetTicks();
   }
 
   // Cleanup
+  move.join();
   SDL_DestroyTexture(bgr);
   SDL_DestroyTexture(image);
   SDL_DestroyRenderer(ren);
