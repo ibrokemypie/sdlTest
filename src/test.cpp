@@ -15,7 +15,7 @@ SDL_Renderer *ren;
 SDL_Window *win;
 bool quit = false;
 
-int x, y, iW, iH;
+int x, y, iW, iH, frames;
 
 // Error log function
 void logSDLError(std::ostream &os, const std::string &msg) {
@@ -115,6 +115,14 @@ void movement() {
   }
 }
 
+void frameRate() {
+  while (!quit) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::cout << "Framerate: " << frames << std::endl;
+    frames = 0;
+  }
+}
+
 void render() {}
 
 // Main function
@@ -142,6 +150,7 @@ int main() {
 
   SDL_Event e;
   std::thread move(movement);
+  std::thread frame(frameRate);
 
   while (!quit) {
     while (SDL_PollEvent(&e)) {
@@ -160,13 +169,16 @@ int main() {
     SDL_RenderPresent(ren);
 
     delaytime = waittime - (SDL_GetTicks() - framestarttime);
-    if (delaytime > 0)
+    if (delaytime > 0) {
       SDL_Delay((Uint32)delaytime);
+    }
     framestarttime = SDL_GetTicks();
+    frames++;
   }
 
   // Cleanup
   move.join();
+  frame.join();
   SDL_DestroyTexture(bgr);
   SDL_DestroyTexture(image);
   SDL_DestroyRenderer(ren);
