@@ -125,6 +125,18 @@ void frameRate() {
 
 void render() {}
 
+void cleanup(std::thread &move, std::thread &frame, SDL_Texture *bgr,
+             SDL_Texture *image) {
+  move.join();
+  frame.join();
+  SDL_DestroyTexture(bgr);
+  SDL_DestroyTexture(image);
+  SDL_DestroyRenderer(ren);
+  SDL_DestroyWindow(win);
+  IMG_Quit();
+  SDL_Quit();
+}
+
 // Main function
 int main() {
   if (init() != 0) {
@@ -176,14 +188,7 @@ int main() {
     frames++;
   }
 
-  // Cleanup
-  move.join();
-  frame.join();
-  SDL_DestroyTexture(bgr);
-  SDL_DestroyTexture(image);
-  SDL_DestroyRenderer(ren);
-  SDL_DestroyWindow(win);
-  IMG_Quit();
-  SDL_Quit();
+  cleanup(move, frame, bgr, image);
+
   return 0;
 }
