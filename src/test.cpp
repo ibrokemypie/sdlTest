@@ -18,7 +18,7 @@ SDL_Window *win;
 bool quit = false;
 int x, y, iW, iH, frames;
 
-struct player {
+struct object {
   int x;
   int y;
   int h;
@@ -26,6 +26,8 @@ struct player {
 
   int speed;
   std::string path;
+
+  SDL_Texture *image;
 };
 
 // Error log function
@@ -102,7 +104,7 @@ int init(int SCREEN_WIDTH, int SCREEN_HEIGHT) {
   return 0;
 }
 
-void movement(int SCREEN_WIDTH, int SCREEN_HEIGHT) {
+void movement(int SCREEN_WIDTH, int SCREEN_HEIGHT, int width, int height) {
   while (!quit) {
     const Uint8 *keyState = SDL_GetKeyboardState(NULL);
     if (keyState[SDL_SCANCODE_W]) {
@@ -111,12 +113,12 @@ void movement(int SCREEN_WIDTH, int SCREEN_HEIGHT) {
       }
     }
     if (keyState[SDL_SCANCODE_S]) {
-      if (y < SCREEN_HEIGHT - iH) {
+      if (y < SCREEN_HEIGHT - height) {
         y += 5;
       }
     }
     if (keyState[SDL_SCANCODE_D]) {
-      if (x < SCREEN_WIDTH - iW) {
+      if (x < SCREEN_WIDTH - width) {
         x += 5;
       }
     }
@@ -169,15 +171,19 @@ int main() {
     return 1;
   }
 
-  // Load image
-  std::string imagePath = "res/test.png";
-  SDL_Texture *image = loadTexture(imagePath, ren);
+  object *player = new object();
+  player->path = "res/test.png";
+  player->speed = 1;
+  player->w = 1;
+
+  player->image = loadTexture(player->path, ren);
+  SDL_QueryTexture(player->image, NULL, NULL, &player->w, &player->h);
+
+  player->x = game->SCREEN_WIDTH / 2 - player->w / 2;
+  player->y = game->SCREEN_HEIGHT / 2 - player->h / 2;
+
   std::string bgrPath = "res/background.bmp";
   SDL_Texture *bgr = loadTexture(bgrPath, ren);
-
-  SDL_QueryTexture(image, NULL, NULL, &iW, &iH);
-  x = game->SCREEN_WIDTH / 2 - iW / 2;
-  y = game->SCREEN_HEIGHT / 2 - iH / 2;
 
   Uint32 waittime = 1000.0f / game->FPS;
   Uint32 framestarttime = 0;
@@ -185,7 +191,8 @@ int main() {
 
   SDL_Event e;
 
-  std::thread move(movement, game->SCREEN_WIDTH, game->SCREEN_HEIGHT);
+  std::thread move(movement, game->SCREEN_WIDTH, game->SCREEN_HEIGHT, player->w,
+                   player->h);
   std::thread frame(frameRate);
 
   while (!quit) {
@@ -195,7 +202,7 @@ int main() {
       }
     }
 
-    render(bgr, image, game->SCREEN_WIDTH, game->SCREEN_HEIGHT);
+    render(bgr, player->image, game->SCREEN_WIDTH, game->SCREEN_HEIGHT);
 
     delaytime = waittime - (SDL_GetTicks() - framestarttime);
     if (delaytime > 0) {
@@ -205,7 +212,7 @@ int main() {
     frames++;
   }
 
-  cleanup(move, frame, bgr, image);
+  cleanup(move, frame, bgr, player->image);
 
   return 0;
 }
