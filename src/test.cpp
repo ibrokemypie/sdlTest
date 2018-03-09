@@ -6,16 +6,27 @@
 #include <thread>
 #include <unistd.h>
 
-#define FPS 60
-
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+struct gameSettings {
+  int SCREEN_WIDTH = 640;
+  int SCREEN_HEIGHT = 480;
+  int FPS = 60;
+};
 
 SDL_Renderer *ren;
 SDL_Window *win;
-bool quit = false;
 
+bool quit = false;
 int x, y, iW, iH, frames;
+
+struct player {
+  int x;
+  int y;
+  int h;
+  int w;
+
+  int speed;
+  std::string path;
+};
 
 // Error log function
 void logSDLError(std::ostream &os, const std::string &msg) {
@@ -52,7 +63,7 @@ void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y) {
   renderTexture(tex, ren, x, y, w, h);
 }
 
-int init() {
+int init(int SCREEN_WIDTH, int SCREEN_HEIGHT) {
   // Initialise SDL
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     logSDLError(std::cout, "SDL_Init");
@@ -85,10 +96,13 @@ int init() {
     return 1;
   }
 
+  SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
+  SDL_RenderClear(ren);
+
   return 0;
 }
 
-void movement() {
+void movement(int SCREEN_WIDTH, int SCREEN_HEIGHT) {
   while (!quit) {
     const Uint8 *keyState = SDL_GetKeyboardState(NULL);
     if (keyState[SDL_SCANCODE_W]) {
@@ -111,7 +125,7 @@ void movement() {
         x -= 5;
       }
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
@@ -123,7 +137,17 @@ void frameRate() {
   }
 }
 
-void render() {}
+void render(SDL_Texture *bgr, SDL_Texture *image, int SCREEN_WIDTH,
+            int SCREEN_HEIGHT) {
+  renderTexture(bgr, ren, 0, 0);
+  renderTexture(bgr, ren, SCREEN_WIDTH / 2, 0);
+
+  renderTexture(bgr, ren, 0, SCREEN_HEIGHT / 2);
+  renderTexture(bgr, ren, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+  renderTexture(image, ren, x, y);
+  SDL_RenderPresent(ren);
+}
 
 void cleanup(std::thread &move, std::thread &frame, SDL_Texture *bgr,
              SDL_Texture *image) {
@@ -139,12 +163,11 @@ void cleanup(std::thread &move, std::thread &frame, SDL_Texture *bgr,
 
 // Main function
 int main() {
-  if (init() != 0) {
+  gameSettings *game = new gameSettings();
+
+  if (init(game->SCREEN_WIDTH, game->SCREEN_HEIGHT) != 0) {
     return 1;
   }
-
-  SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
-  SDL_RenderClear(ren);
 
   // Load image
   std::string imagePath = "res/test.png";
@@ -153,15 +176,16 @@ int main() {
   SDL_Texture *bgr = loadTexture(bgrPath, ren);
 
   SDL_QueryTexture(image, NULL, NULL, &iW, &iH);
-  x = SCREEN_WIDTH / 2 - iW / 2;
-  y = SCREEN_HEIGHT / 2 - iH / 2;
+  x = game->SCREEN_WIDTH / 2 - iW / 2;
+  y = game->SCREEN_HEIGHT / 2 - iH / 2;
 
-  Uint32 waittime = 1000.0f / FPS;
+  Uint32 waittime = 1000.0f / game->FPS;
   Uint32 framestarttime = 0;
   Sint32 delaytime;
 
   SDL_Event e;
-  std::thread move(movement);
+
+  std::thread move(movement, game->SCREEN_WIDTH, game->SCREEN_HEIGHT);
   std::thread frame(frameRate);
 
   while (!quit) {
@@ -171,14 +195,7 @@ int main() {
       }
     }
 
-    renderTexture(bgr, ren, 0, 0);
-    renderTexture(bgr, ren, SCREEN_WIDTH / 2, 0);
-
-    renderTexture(bgr, ren, 0, SCREEN_HEIGHT / 2);
-    renderTexture(bgr, ren, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-
-    renderTexture(image, ren, x, y);
-    SDL_RenderPresent(ren);
+    render(bgr, image, game->SCREEN_WIDTH, game->SCREEN_HEIGHT);
 
     delaytime = waittime - (SDL_GetTicks() - framestarttime);
     if (delaytime > 0) {
